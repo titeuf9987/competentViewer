@@ -296,7 +296,7 @@ section.block h3 {
   align-items: center;
   gap: 8px;
 }
-section.block h3 .count {
+.count {
   font-size: 11px;
   color: var(--muted);
   font-weight: normal;
@@ -350,6 +350,8 @@ table.simple tr:last-child td { border-bottom: none; }
 .chip:hover { filter: brightness(0.95); }
 .chip.soft { background: var(--chip-soft-bg); color: var(--chip-soft-text); }
 .chip.digital { background: var(--chip-digital-bg); color: var(--chip-digital-text); }
+.chip.essential { background: color-mix(in srgb, var(--essential) 16%, transparent); color: var(--essential); }
+.chip.optional { background: color-mix(in srgb, var(--optional) 16%, transparent); color: var(--optional); }
 .chip.static { cursor: default; }
 .chip .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; opacity: 0.7; }
 

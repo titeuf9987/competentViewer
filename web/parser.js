@@ -46,6 +46,8 @@ function parseCompetentWorkbook(workbook, sourceName) {
   const softSkills = {};
   const digitalSkills = {};
   const competenceSets = {};
+  const econSectors = {};
+  const areasOfInterest = {};
 
   // --- Occupational Profiles (base) ---
   for (const r of sheetRows(workbook, 'Occupational Profiles')) {
@@ -96,14 +98,18 @@ function parseCompetentWorkbook(workbook, sourceName) {
   for (const r of sheetRows(workbook, 'Occ.Prof - Econ.Sectors')) {
     const [occId, opCode, opTNl, opTFr, esId, esCode, esNl, esFr] = r;
     if (!occupations[opCode]) continue;
-    occupations[opCode].econSectors.push({ id: esId, code: esCode, title: lang(esNl, esFr) });
+    if (!econSectors[esCode]) econSectors[esCode] = { code: esCode, title: lang(esNl, esFr), occupations: [] };
+    if (!econSectors[esCode].occupations.includes(opCode)) econSectors[esCode].occupations.push(opCode);
+    if (!occupations[opCode].econSectors.includes(esCode)) occupations[opCode].econSectors.push(esCode);
   }
 
   // --- Areas of Interest ---
   for (const r of sheetRows(workbook, 'Occ.Prof - Areas of Interest')) {
     const [occId, opCode, opTNl, opTFr, aiId, aiCode, aiNl, aiFr] = r;
     if (!occupations[opCode]) continue;
-    occupations[opCode].areasOfInterest.push({ id: aiId, code: aiCode, title: lang(aiNl, aiFr) });
+    if (!areasOfInterest[aiCode]) areasOfInterest[aiCode] = { code: aiCode, title: lang(aiNl, aiFr), occupations: [] };
+    if (!areasOfInterest[aiCode].occupations.includes(opCode)) areasOfInterest[aiCode].occupations.push(opCode);
+    if (!occupations[opCode].areasOfInterest.includes(aiCode)) occupations[opCode].areasOfInterest.push(aiCode);
   }
 
   // --- Soft Skills ---
@@ -208,5 +214,7 @@ function parseCompetentWorkbook(workbook, sourceName) {
     softSkills,
     digitalSkills,
     competenceSets,
+    econSectors,
+    areasOfInterest,
   };
 }

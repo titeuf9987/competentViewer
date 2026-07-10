@@ -129,6 +129,18 @@ function digitalChip(code) {
   return `<button class="chip digital" data-nav="#/competence/digital/${esc(code)}"><span class="code">${esc(code)}</span>${esc(label)}</button>`;
 }
 
+function sectorChip(code) {
+  const s = DATA.econSectors[code];
+  const label = s ? (pick(s.title, currentLang) || code) : code;
+  return `<button class="chip" data-nav="#/secteur/${esc(code)}"><span class="code">${esc(code)}</span>${esc(label)}</button>`;
+}
+
+function areaChip(code) {
+  const s = DATA.areasOfInterest[code];
+  const label = s ? (pick(s.title, currentLang) || code) : code;
+  return `<button class="chip" data-nav="#/interet/${esc(code)}"><span class="code">${esc(code)}</span>${esc(label)}</button>`;
+}
+
 function block(title, count, innerHtml) {
   if (count === 0) return '';
   return `<section class="block"><h3>${esc(title)} <span class="count">${count}</span></h3>${innerHtml}</section>`;
@@ -155,6 +167,10 @@ function render() {
     app.appendChild(renderSoftDigitalPage('soft', parts[2]));
   } else if (parts[0] === 'competence' && parts[1] === 'digital' && parts[2]) {
     app.appendChild(renderSoftDigitalPage('digital', parts[2]));
+  } else if (parts[0] === 'secteur' && parts[1]) {
+    app.appendChild(renderLinkedEntityPage(DATA.econSectors[parts[1]], 'Secteur économique'));
+  } else if (parts[0] === 'interet' && parts[1]) {
+    app.appendChild(renderLinkedEntityPage(DATA.areasOfInterest[parts[1]], "Domaine d'intérêt"));
   } else {
     app.appendChild(renderHome());
   }
@@ -373,29 +389,47 @@ function renderOccupationPage(opCode) {
     </section>
   `;
 
+  const LANG_LABELS = { FRENCH: 'FR', DUTCH: 'NL', GERMAN: 'DE', ENGLISH: 'EN' };
+  function altNamesColumn(language, label) {
+    const items = op.altNames.filter((a) => a.language === language);
+    if (!items.length) return '';
+    return `
+      <div class="subgroup">
+        <div class="label">${esc(label)} <span class="count">${items.length}</span></div>
+        <ul>${items.map((a) => `<li><span class="code">${esc(a.code)}</span> ${esc(a.title)}</li>`).join('')}</ul>
+      </div>
+    `;
+  }
+  const otherLanguages = [...new Set(op.altNames.map((a) => a.language))].filter((l) => l !== 'FRENCH' && l !== 'DUTCH');
   const altNamesBlock = block('Noms alternatifs', op.altNames.length, `
-    <table class="simple">
-      <thead><tr><th>Code</th><th>Langue</th><th>Nom</th></tr></thead>
-      <tbody>${op.altNames.map((a) => `<tr><td>${esc(a.code)}</td><td>${esc(a.language)}</td><td>${esc(a.title)}</td></tr>`).join('')}</tbody>
-    </table>
+    <div class="two-col">
+      ${altNamesColumn('FRENCH', 'FR')}
+      ${altNamesColumn('DUTCH', 'NL')}
+      ${otherLanguages.map((l) => altNamesColumn(l, LANG_LABELS[l] || l)).join('')}
+    </div>
   `);
 
-  const descParts = Object.entries(op.description).map(([k, v]) => `<div><span class="lang-label">${k}</span>${esc(v)}</div>`).join('');
-  const descBlock = Object.keys(op.description).length ? `<section class="block"><h3>Description</h3><div class="text-block">${descParts}</div></section>` : '';
+  function twoColLang(obj) {
+    const fr = obj.fr ? `<div><span class="lang-label">FR</span>${esc(obj.fr)}</div>` : '';
+    const nl = obj.nl ? `<div><span class="lang-label">NL</span>${esc(obj.nl)}</div>` : '';
+    const others = Object.entries(obj).filter(([k]) => k !== 'fr' && k !== 'nl')
+      .map(([k, v]) => `<div><span class="lang-label">${esc(k.toUpperCase())}</span>${esc(v)}</div>`).join('');
+    return `<div class="two-col"><div class="text-block">${fr}</div><div class="text-block">${nl}</div></div>${others ? `<div class="text-block">${others}</div>` : ''}`;
+  }
 
-  const wcParts = Object.entries(op.workingContext).map(([k, v]) => `<div><span class="lang-label">${k}</span>${esc(v)}</div>`).join('');
-  const wcBlock = Object.keys(op.workingContext).length ? `<section class="block"><h3>Contexte de travail</h3><div class="text-block">${wcParts}</div></section>` : '';
+  const descBlock = Object.keys(op.description).length ? `<section class="block"><h3>Description</h3>${twoColLang(op.description)}</section>` : '';
+  const wcBlock = Object.keys(op.workingContext).length ? `<section class="block"><h3>Contexte de travail</h3>${twoColLang(op.workingContext)}</section>` : '';
 
   const iscoBlock = block('Codes ISCO', op.iscoCodes.length, `
     <div class="chips">${op.iscoCodes.map((c) => `<span class="chip static">${esc(c.type)}: ${esc(c.value)}</span>`).join('')}</div>
   `);
 
   const sectorsBlock = block('Secteurs économiques', op.econSectors.length, `
-    <div class="chips">${op.econSectors.map((s) => `<span class="chip static"><span class="code">${esc(s.code)}</span>${esc(pick(s.title, currentLang))}</span>`).join('')}</div>
+    <div class="chips">${op.econSectors.map(sectorChip).join('')}</div>
   `);
 
   const areasBlock = block("Domaines d'intérêt", op.areasOfInterest.length, `
-    <div class="chips">${op.areasOfInterest.map((s) => `<span class="chip static"><span class="code">${esc(s.code)}</span>${esc(pick(s.title, currentLang))}</span>`).join('')}</div>
+    <div class="chips">${op.areasOfInterest.map(areaChip).join('')}</div>
   `);
 
   const polBlock = block("Preuves d'apprentissage", op.proofsOfLearning.length, `
@@ -408,26 +442,13 @@ function renderOccupationPage(opCode) {
   const softBlock = block('Soft skills', op.softSkills.length, `<div class="chips">${op.softSkills.map(softChip).join('')}</div>`);
   const digitalBlock = block('Digital skills', op.digitalSkills.length, `<div class="chips">${op.digitalSkills.map(digitalChip).join('')}</div>`);
 
-  function competenceCards(cpCodes, badgeCls, badgeLabel) {
-    return cpCodes.map((cpCode) => {
-      const cp = DATA.competences[cpCode];
-      if (!cp) return '';
-      const skTitle = pick(cp.title, currentLang) || cp.skillCode;
-      const totalOther = new Set([...cp.essentialFor, ...cp.optionalFor]).size - 1;
-      return `
-        <div class="competence-card">
-          <div class="cc-meta">${esc(cpCode)} · compétence ${esc(cp.skillCode || '')} <span class="badge ${badgeCls}">${badgeLabel}</span></div>
-          <div class="cc-title" data-nav="#/competence/skill/${esc(cp.skillCode)}">${esc(skTitle)}</div>
-          ${totalOther > 0 ? `<div class="empty-note">Partagée avec ${totalOther} autre(s) métier(s)</div>` : ''}
-          ${cp.knowledge.length ? `<div class="subgroup"><div class="label">Connaissances (${cp.knowledge.length})</div><ul>${cp.knowledge.map((k) => `<li>${esc(pick(k.title, currentLang))}</li>`).join('')}</ul></div>` : ''}
-          ${cp.behavioral.length ? `<div class="subgroup"><div class="label">Indicateurs comportementaux (${cp.behavioral.length})</div><ul>${cp.behavioral.map((b) => `<li>${esc(pick(b.title, currentLang))}</li>`).join('')}</ul></div>` : ''}
-        </div>
-      `;
-    }).join('');
+  function competenceChips(cpCodes, cls) {
+    const skillCodes = [...new Set(cpCodes.map((cpCode) => DATA.competences[cpCode]?.skillCode).filter(Boolean))];
+    return skillCodes.map((skillCode) => skillChip(skillCode, cls)).join('');
   }
 
-  const essentialBlock = block('Compétences essentielles', op.essentialCompetenceCPs.length, competenceCards(op.essentialCompetenceCPs, 'essential', 'essentielle'));
-  const optionalBlock = block('Compétences optionnelles', op.optionalCompetenceCPs.length, competenceCards(op.optionalCompetenceCPs, 'optional', 'optionnelle'));
+  const essentialBlock = block('Compétences essentielles', op.essentialCompetenceCPs.length, `<div class="chips">${competenceChips(op.essentialCompetenceCPs, 'essential')}</div>`);
+  const optionalBlock = block('Compétences optionnelles', op.optionalCompetenceCPs.length, `<div class="chips">${competenceChips(op.optionalCompetenceCPs, 'optional')}</div>`);
 
   const csetBlock = block('Ensembles de compétences', op.competenceSets.length, op.competenceSets.map((csCode) => {
     const cset = DATA.competenceSets[csCode];
@@ -454,9 +475,9 @@ function renderOccupationPage(opCode) {
         ${otherTitle ? `<div class="subtitle">${esc(otherTitle)}</div>` : ''}
       </div>
       ${identBlock}
-      ${altNamesBlock}
       ${descBlock}
       ${wcBlock}
+      ${altNamesBlock}
       ${iscoBlock}
       ${sectorsBlock}
       ${areasBlock}
@@ -524,6 +545,28 @@ function renderSkillPage(skillCode) {
       </div>
       ${instancesBlock}
       ${csetBlock}
+    </div>
+  `);
+  return wrap;
+}
+
+// ---------- economic sector / area of interest page ----------
+
+function renderLinkedEntityPage(item, kindLabel) {
+  if (!item) return el(`<div><p>Introuvable.</p></div>`);
+  const title = pick(item.title, currentLang) || item.code;
+
+  const wrap = el(`
+    <div>
+      <div class="breadcrumb"><a data-nav="#/">Accueil</a> / ${esc(kindLabel)}</div>
+      <div class="detail-header">
+        <span class="code-tag">${esc(item.code)}</span> <span class="kind">${esc(kindLabel)}</span>
+        <h2>${esc(title)}</h2>
+      </div>
+      <section class="block">
+        <h3>Métiers concernés <span class="count">${item.occupations.length}</span></h3>
+        <div class="occ-list">${item.occupations.map(occChip).join('')}</div>
+      </section>
     </div>
   `);
   return wrap;
