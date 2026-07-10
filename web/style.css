@@ -14,6 +14,9 @@
   --chip-digital-text: #a15c07;
   --essential: #c0392b;
   --optional: #8e7b12;
+  --match-exact: #1e8f5e;
+  --match-proche: #2f6fed;
+  --match-associe: #6b6f80;
   --shadow: 0 1px 3px rgba(20, 20, 40, 0.08);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -35,6 +38,9 @@
     --chip-digital-text: #e6b571;
     --essential: #e77a6d;
     --optional: #d9c25a;
+    --match-exact: #4fd9a4;
+    --match-proche: #9db8ff;
+    --match-associe: #a9adc0;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 }
@@ -55,6 +61,9 @@
   --chip-digital-text: #e6b571;
   --essential: #e77a6d;
   --optional: #d9c25a;
+  --match-exact: #4fd9a4;
+  --match-proche: #9db8ff;
+  --match-associe: #a9adc0;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
@@ -74,6 +83,9 @@
   --chip-digital-text: #a15c07;
   --essential: #c0392b;
   --optional: #8e7b12;
+  --match-exact: #1e8f5e;
+  --match-proche: #2f6fed;
+  --match-associe: #6b6f80;
   --shadow: 0 1px 3px rgba(20, 20, 40, 0.08);
 }
 
@@ -373,6 +385,9 @@ table.simple tr:last-child td { border-bottom: none; }
 .chip.digital { background: var(--chip-digital-bg); color: var(--chip-digital-text); }
 .chip.essential { background: color-mix(in srgb, var(--essential) 16%, transparent); color: var(--essential); }
 .chip.optional { background: color-mix(in srgb, var(--optional) 16%, transparent); color: var(--optional); }
+.chip.match-exact { background: color-mix(in srgb, var(--match-exact) 16%, transparent); color: var(--match-exact); }
+.chip.match-proche { background: color-mix(in srgb, var(--match-proche) 16%, transparent); color: var(--match-proche); }
+.chip.match-associe { background: color-mix(in srgb, var(--match-associe) 20%, transparent); color: var(--match-associe); }
 .chip.static { cursor: default; }
 .chip .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; opacity: 0.7; }
 

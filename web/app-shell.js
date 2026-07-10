@@ -1,6 +1,8 @@
 // Shared header chrome: tab switching, the refresh button, and the FR/NL
 // toggle. Delegates all actual rendering to CompetentApp or TalentApp,
-// whichever tab is active — the two datasets never talk to each other.
+// whichever tab is active. The two datasets are otherwise independent,
+// except for the curated Competent<->Talent competence matches (matching.js)
+// shown as cross-tab links on soft skill / compétence pages.
 let currentLang = 'fr';
 let activeTab = 'competent';
 
@@ -71,5 +73,20 @@ refreshInput.addEventListener('change', () => {
   refreshInput.value = '';
 });
 
+// The active tab's own data is loaded by route(). The other tab's default
+// data, plus the cross-tab matching table, are fetched in the background
+// (both are small) so that cross-links resolve without waiting for the
+// user to actually visit the other tab; once ready, re-render in place.
+async function bootstrapCrossLinks() {
+  const jobs = [ensureMatchesLoaded()];
+  if (!CompetentApp.hasData() && !CompetentApp.isLoading()) jobs.push(CompetentApp.init());
+  if (!TalentApp.hasData() && !TalentApp.isLoading()) jobs.push(TalentApp.init());
+  await Promise.allSettled(jobs);
+  route();
+}
+
 window.addEventListener('hashchange', route);
-window.addEventListener('DOMContentLoaded', route);
+window.addEventListener('DOMContentLoaded', () => {
+  route();
+  bootstrapCrossLinks();
+});

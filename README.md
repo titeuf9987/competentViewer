@@ -1,7 +1,8 @@
 # Competent Viewer
 
-Un visualiseur pour deux référentiels, chacun dans son propre onglet et sans lien
-entre eux.
+Un visualiseur pour deux référentiels, chacun dans son propre onglet avec ses propres
+données — seules les compétences explicitement mises en correspondance entre les deux
+(voir « Correspondance Competent ↔ Talent » plus bas) sont reliées entre les onglets.
 
 ## Onglet « Métiers & compétences »
 
@@ -30,6 +31,22 @@ familles, déclinées par niveaux D/C/B/A). Deux points d'entrée :
 - **Par niveau** : toutes les compétences qui se déclinent à ce niveau.
 
 Fichier chargé par défaut : `web/data/talent.xlsx`.
+
+## Correspondance Competent ↔ Talent
+
+Une table de correspondance (`web/data/matching.csv`) relie certains soft skills de
+l'onglet « Métiers & compétences » à certaines compétences de l'onglet « Référentiel
+Talent », avec un degré de proximité (exact / proche / associé). Chaque soft skill
+concerné affiche un bloc « Référentiel Talent — compétences liées » vers les
+compétences Talent correspondantes, et réciproquement chaque compétence Talent
+concernée affiche un bloc « Métiers & compétences — soft skills liés » — cliquer sur un
+lien bascule automatiquement sur l'autre onglet, à la bonne page. C'est le seul pont
+entre les deux référentiels ; tout le reste de chaque onglet reste indépendant.
+
+Ce fichier est chargé une fois au démarrage, en arrière-plan (comme les deux exports
+par défaut), indépendamment de l'onglet affiché. Pour le mettre à jour, remplacez
+`web/data/matching.csv` (colonnes `competent;talent;relation`, une ligne par
+correspondance).
 
 ## Fonctionnement commun aux deux onglets
 
@@ -61,14 +78,17 @@ onglets `Compétences`, `Liens niveaux`, `Dimensions`, `Texte source`.
 ## Structure
 
 - `web/data/export.xlsx`, `web/data/talent.xlsx` — fichiers chargés par défaut.
+- `web/data/matching.csv` — correspondance Competent ↔ Talent (voir plus haut).
 - `web/index.html`, `web/style.css` — page et mise en forme partagées par les deux onglets.
-- `web/app-shell.js` — bascule d'onglet, icône rafraîchir et sélecteur FR/NL, communs
-  aux deux onglets ; délègue tout le reste au module actif.
+- `web/app-shell.js` — bascule d'onglet, icône rafraîchir, sélecteur FR/NL, et
+  chargement en arrière-plan des deux jeux de données + de la correspondance.
 - `web/parser.js`, `web/app.js` — onglet « Métiers & compétences » (`CompetentApp`) :
   transforme le classeur en modèle de données, puis recherche/navigation/rendu.
 - `web/talent-parser.js`, `web/app-talent.js` — onglet « Référentiel Talent »
   (`TalentApp`), en tous points indépendant du premier (mêmes principes, données
   distinctes).
+- `web/matching.js` — charge et interroge `matching.csv` ; utilisé par les deux modules
+  ci-dessus pour afficher leurs liens croisés.
 - `web/vendor/xlsx.full.min.js` — [SheetJS](https://sheetjs.com/) (licence Apache 2.0,
   voir `web/vendor/LICENSE.xlsx.txt`), utilisé pour lire les fichiers Excel côté client.
 - `server.js`, `package.json` — serveur statique Node minimal (pour l'hébergement, ex.

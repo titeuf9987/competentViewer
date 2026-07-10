@@ -257,6 +257,40 @@ const TalentApp = (function () {
 
   // ---------- competence page ----------
 
+  const RELATION_LABELS = { exact: 'Correspondance exacte', proche: 'Compétences proches', 'associé': 'Compétences associées' };
+  function relationClass(rel) {
+    const r = (rel || '').toLowerCase();
+    if (r.startsWith('exact')) return 'exact';
+    if (r.startsWith('proche')) return 'proche';
+    return 'associe';
+  }
+
+  function competentMatchesBlock(titleFr) {
+    const matches = matchesForTalentTitle(titleFr);
+    if (!matches.length) return '';
+    const order = ['exact', 'proche', 'associé'];
+    const groups = {};
+    for (const m of matches) {
+      if (!groups[m.relation]) groups[m.relation] = [];
+      groups[m.relation].push(m);
+    }
+    const keys = [...order.filter((k) => groups[k]), ...Object.keys(groups).filter((k) => !order.includes(k))];
+    const groupsHtml = keys.map((rel) => `
+      <div class="subgroup">
+        <div class="label">${esc(RELATION_LABELS[rel] || rel)} <span class="count">${groups[rel].length}</span></div>
+        <div class="chips">${groups[rel].map((m) => {
+          const s = CompetentApp.findSoftSkillByTitleFr(m.competentTitle);
+          if (s) {
+            const label = pick(s.title, currentLang) || m.competentTitle;
+            return `<button class="chip match-${relationClass(rel)}" data-nav="#/competent/competence/soft/${esc(s.code)}"><span class="code">${esc(s.code)}</span>${esc(label)}</button>`;
+          }
+          return `<span class="chip static">${esc(m.competentTitle)}</span>`;
+        }).join('')}</div>
+      </div>
+    `).join('');
+    return block('Métiers & compétences — soft skills liés', matches.length, groupsHtml);
+  }
+
   function renderCompetencePage(id) {
     const c = DATA.competences[id];
     if (!c) return el(`<div><p>Compétence introuvable : ${esc(id)}</p></div>`);
@@ -277,6 +311,8 @@ const TalentApp = (function () {
     `;
 
     const descBlock = (c.description.fr || c.description.nl) ? `<section class="block"><h3>Description</h3>${twoColLang(c.description)}</section>` : '';
+
+    const matchesBlock = competentMatchesBlock(c.title.fr);
 
     const niveauxBlock = block('Niveaux', c.niveaux.length, `
       <table class="simple">
@@ -328,6 +364,7 @@ const TalentApp = (function () {
         </div>
         ${identBlock}
         ${descBlock}
+        ${matchesBlock}
         ${niveauxBlock}
         ${dimensionsBlock}
         ${texteBlock}
@@ -402,6 +439,12 @@ const TalentApp = (function () {
     return wrap;
   }
 
+  function findCompetenceByTitleFr(title) {
+    if (!DATA) return null;
+    const found = Object.values(DATA.competences).find((c) => c.title.fr === title);
+    return found || null;
+  }
+
   return {
     prefix: PREFIX,
     init,
@@ -409,5 +452,6 @@ const TalentApp = (function () {
     loadFile,
     hasData: () => !!DATA,
     isLoading: () => loading,
+    findCompetenceByTitleFr,
   };
 })();

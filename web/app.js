@@ -543,6 +543,40 @@ const CompetentApp = (function () {
 
   // ---------- soft / digital skill page ----------
 
+  const RELATION_LABELS = { exact: 'Correspondance exacte', proche: 'Compétences proches', 'associé': 'Compétences associées' };
+  function relationClass(rel) {
+    const r = (rel || '').toLowerCase();
+    if (r.startsWith('exact')) return 'exact';
+    if (r.startsWith('proche')) return 'proche';
+    return 'associe';
+  }
+
+  function talentMatchesBlock(titleFr) {
+    const matches = matchesForCompetentTitle(titleFr);
+    if (!matches.length) return '';
+    const order = ['exact', 'proche', 'associé'];
+    const groups = {};
+    for (const m of matches) {
+      if (!groups[m.relation]) groups[m.relation] = [];
+      groups[m.relation].push(m);
+    }
+    const keys = [...order.filter((k) => groups[k]), ...Object.keys(groups).filter((k) => !order.includes(k))];
+    const groupsHtml = keys.map((rel) => `
+      <div class="subgroup">
+        <div class="label">${esc(RELATION_LABELS[rel] || rel)} <span class="count">${groups[rel].length}</span></div>
+        <div class="chips">${groups[rel].map((m) => {
+          const c = TalentApp.findCompetenceByTitleFr(m.talentTitle);
+          if (c) {
+            const label = pick(c.title, currentLang) || m.talentTitle;
+            return `<button class="chip match-${relationClass(rel)}" data-nav="#/talent/competence/${esc(c.id)}"><span class="code">${esc(c.id)}</span>${esc(label)}</button>`;
+          }
+          return `<span class="chip static">${esc(m.talentTitle)}</span>`;
+        }).join('')}</div>
+      </div>
+    `).join('');
+    return block('Référentiel Talent — compétences liées', matches.length, groupsHtml);
+  }
+
   function renderSoftDigitalPage(kind, code) {
     const store = kind === 'soft' ? DATA.softSkills : DATA.digitalSkills;
     const item = store[code];
@@ -550,6 +584,8 @@ const CompetentApp = (function () {
     const title = pick(item.title, currentLang) || code;
     const kindLabel = kind === 'soft' ? 'Soft skill' : 'Digital skill';
     const kindCls = kind === 'soft' ? 'soft' : 'digital';
+
+    const matchesBlock = kind === 'soft' ? talentMatchesBlock(item.title.fr) : '';
 
     const wrap = el(`
       <div>
@@ -562,9 +598,16 @@ const CompetentApp = (function () {
           <h3>Métiers concernés <span class="count">${item.occupations.length}</span></h3>
           <div class="occ-list">${item.occupations.map(occChip).join('')}</div>
         </section>
+        ${matchesBlock}
       </div>
     `);
     return wrap;
+  }
+
+  function findSoftSkillByTitleFr(title) {
+    if (!DATA) return null;
+    const found = Object.values(DATA.softSkills).find((s) => s.title.fr === title);
+    return found || null;
   }
 
   return {
@@ -574,5 +617,6 @@ const CompetentApp = (function () {
     loadFile,
     hasData: () => !!DATA,
     isLoading: () => loading,
+    findSoftSkillByTitleFr,
   };
 })();
