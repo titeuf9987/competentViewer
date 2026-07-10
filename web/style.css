@@ -107,6 +107,27 @@ header.top h1 {
 }
 header.top h1 span { color: var(--accent); }
 
+.tabnav {
+  display: flex;
+  gap: 4px;
+}
+.tabnav button {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  padding: 5px 12px;
+  border-radius: 100px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.tabnav button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -400,6 +421,7 @@ table.simple tr:last-child td { border-bottom: none; }
 }
 .badge.essential { background: color-mix(in srgb, var(--essential) 18%, transparent); color: var(--essential); }
 .badge.optional { background: color-mix(in srgb, var(--optional) 18%, transparent); color: var(--optional); }
+.badge.neutral { background: var(--accent-soft); color: var(--accent); }
 
 .occ-list {
   display: flex;
