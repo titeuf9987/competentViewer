@@ -173,7 +173,7 @@ function renderHome() {
       <div class="entrypoints">
         <div class="entry-card">
           <h2>Par métier</h2>
-          <p class="hint">Cherchez un métier pour voir tout ce qui lui est lié : compétences, soft &amp; digital skills, secteurs, preuves d'apprentissage…</p>
+          <p class="hint">Parcourez ou cherchez un métier pour voir tout ce qui lui est lié : compétences, soft &amp; digital skills, secteurs, preuves d'apprentissage…</p>
           <div class="search-box">
             <input id="search-metier" placeholder="Ex: Architecte, Content marketeer…">
             <div class="search-results" id="results-metier"></div>
@@ -181,7 +181,7 @@ function renderHome() {
         </div>
         <div class="entry-card">
           <h2>Par compétence</h2>
-          <p class="hint">Cherchez une compétence, un soft skill ou un digital skill pour voir tous les métiers concernés.</p>
+          <p class="hint">Parcourez ou cherchez une compétence, un soft skill ou un digital skill pour voir tous les métiers concernés.</p>
           <div class="search-box">
             <input id="search-competence" placeholder="Ex: Communiceren, Analyseren…">
             <div class="search-results" id="results-competence"></div>
@@ -204,12 +204,14 @@ function renderHome() {
   searchMetier.addEventListener('input', () => {
     renderOccResults(resultsMetier, searchMetier.value.trim());
   });
+  renderOccResults(resultsMetier, '');
 
   const searchComp = wrap.querySelector('#search-competence');
   const resultsComp = wrap.querySelector('#results-competence');
   searchComp.addEventListener('input', () => {
     renderCompResults(resultsComp, searchComp.value.trim());
   });
+  renderCompResults(resultsComp, '');
 
   return wrap;
 }
@@ -223,7 +225,13 @@ function matchScore(label, q) {
 }
 
 function renderOccResults(container, query) {
-  if (!query) { container.innerHTML = ''; return; }
+  if (!query) {
+    const all = Object.values(DATA.occupations)
+      .map((op) => ({ nav: `#/metier/${op.id}`, code: op.id, label: pick(op.title, currentLang) || op.id, sub: null, kindLabel: null, kindCls: '' }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    renderResultList(container, all);
+    return;
+  }
   const q = query.toLowerCase();
   const results = [];
   for (const op of Object.values(DATA.occupations)) {
@@ -249,8 +257,26 @@ function renderOccResults(container, query) {
   })));
 }
 
+function allCompetenceEntries() {
+  const all = [];
+  for (const sk of Object.values(DATA.skills)) {
+    all.push({ nav: `#/competence/skill/${sk.code}`, code: sk.code, label: pick(sk.title, currentLang) || sk.code, kindLabel: 'Compétence', kindCls: '' });
+  }
+  for (const ss of Object.values(DATA.softSkills)) {
+    all.push({ nav: `#/competence/soft/${ss.code}`, code: ss.code, label: pick(ss.title, currentLang) || ss.code, kindLabel: 'Soft skill', kindCls: 'soft' });
+  }
+  for (const ds of Object.values(DATA.digitalSkills)) {
+    all.push({ nav: `#/competence/digital/${ds.code}`, code: ds.code, label: pick(ds.title, currentLang) || ds.code, kindLabel: 'Digital skill', kindCls: 'digital' });
+  }
+  return all;
+}
+
 function renderCompResults(container, query) {
-  if (!query) { container.innerHTML = ''; return; }
+  if (!query) {
+    const all = allCompetenceEntries().sort((a, b) => a.label.localeCompare(b.label));
+    renderResultList(container, all);
+    return;
+  }
   const q = query.toLowerCase();
   const results = [];
   for (const sk of Object.values(DATA.skills)) {
