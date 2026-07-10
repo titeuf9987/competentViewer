@@ -44,10 +44,18 @@ function parseTalentWorkbook(workbook, sourceName) {
   }
 
   // --- Liens niveaux ---
+  // The letter alone (A/B/C/D) is not the actual level: the same letter
+  // means a different thing depending on where it sits in a given
+  // compétence's ladder (e.g. a 2-rung ladder ending in A ("B, A") is a
+  // different level than a 5-rung one ("Indicateurs standards, D, C, B, A")).
+  // "Ordre" is that rung position, so the real level id is letter+ordre
+  // (A1, A2, A3...), per the reference's own numbering (e.g. "A3"). This
+  // does not use the Compétences tab's summary "Niveaux" column at all.
   for (const r of sheetRows(workbook, 'Liens niveaux')) {
     const [id, cFr, cNl, ordre, nivFr, nivNl, marqueur, pageSource] = r;
     if (!competences[id]) continue;
-    const levelKey = stripMarker(nivFr);
+    const baseLetter = stripMarker(nivFr);
+    const levelKey = /^[ABCD]$/.test(baseLetter) ? `${baseLetter}${ordre}` : baseLetter;
     competences[id].niveaux.push({ ordre, niveau: lang(nivNl, nivFr), levelKey, marqueur: nz(marqueur), pageSource });
     if (!niveaux[levelKey]) niveaux[levelKey] = { key: levelKey, competences: [] };
     if (!niveaux[levelKey].competences.some((c) => c.id === id)) {
