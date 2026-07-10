@@ -342,16 +342,38 @@ const TalentApp = (function () {
     const niveau = DATA.niveaux[levelKey];
     if (!niveau) return el(`<div><p>Niveau introuvable : ${esc(levelKey)}</p></div>`);
 
+    const groups = {};
+    for (const c of niveau.competences) {
+      const g = c.exactLevel || levelKey;
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(c);
+    }
+    const groupKeys = Object.keys(groups).sort((a, b) => {
+      const na = parseInt(a.replace(/\D/g, ''), 10);
+      const nb = parseInt(b.replace(/\D/g, ''), 10);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a.localeCompare(b);
+    });
+    const isCumulative = groupKeys.length > 1;
+
+    const groupsHtml = groupKeys.map((g) => `
+      <div class="subgroup">
+        <div class="label">${esc(g)}${g === levelKey ? ' (spécifique)' : ''} <span class="count">${groups[g].length}</span></div>
+        <div class="chips">${groups[g].map((c) => competenceChip(c.id)).join('')}</div>
+      </div>
+    `).join('');
+
     const wrap = el(`
       <div>
         <div class="breadcrumb"><a data-nav="#/${PREFIX}">Accueil</a> / Niveau</div>
         <div class="detail-header">
           <span class="code-tag">${esc(levelKey)}</span>
           <h2>${esc(levelKey)}</h2>
+          ${isCumulative ? `<div class="subtitle">Niveau cumulatif : ${esc(levelKey)} inclut les niveaux ${esc(groupKeys.filter((g) => g !== levelKey).join(', '))} + ce qui est spécifique à ${esc(levelKey)}</div>` : ''}
         </div>
         <section class="block">
           <h3>Compétences concernées <span class="count">${niveau.competences.length}</span></h3>
-          <div class="chips">${niveau.competences.map((c) => competenceChip(c.id)).join('')}</div>
+          ${groupsHtml}
         </section>
       </div>
     `);

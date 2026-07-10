@@ -51,15 +51,36 @@ function parseTalentWorkbook(workbook, sourceName) {
   // "Ordre" is that rung position, so the real level id is letter+ordre
   // (A1, A2, A3...), per the reference's own numbering (e.g. "A3"). This
   // does not use the Compétences tab's summary "Niveaux" column at all.
+  // The scale is also cumulative: reaching A5 implies A1-A4 too, so the
+  // "A5" level's competences are the union of A1..A5 (same for B/C/D).
+  const exactByLetterOrdre = {}; // { A: { 1: [{id,marqueur,pageSource}], 2: [...] }, ... }
   for (const r of sheetRows(workbook, 'Liens niveaux')) {
     const [id, cFr, cNl, ordre, nivFr, nivNl, marqueur, pageSource] = r;
     if (!competences[id]) continue;
     const baseLetter = stripMarker(nivFr);
-    const levelKey = /^[ABCD]$/.test(baseLetter) ? `${baseLetter}${ordre}` : baseLetter;
+    const isScaled = /^[ABCD]$/.test(baseLetter);
+    const levelKey = isScaled ? `${baseLetter}${ordre}` : baseLetter;
     competences[id].niveaux.push({ ordre, niveau: lang(nivNl, nivFr), levelKey, marqueur: nz(marqueur), pageSource });
-    if (!niveaux[levelKey]) niveaux[levelKey] = { key: levelKey, competences: [] };
-    if (!niveaux[levelKey].competences.some((c) => c.id === id)) {
-      niveaux[levelKey].competences.push({ id, marqueur: nz(marqueur), pageSource });
+    const entry = { id, marqueur: nz(marqueur), pageSource, exactLevel: levelKey };
+    if (isScaled) {
+      if (!exactByLetterOrdre[baseLetter]) exactByLetterOrdre[baseLetter] = {};
+      if (!exactByLetterOrdre[baseLetter][ordre]) exactByLetterOrdre[baseLetter][ordre] = [];
+      exactByLetterOrdre[baseLetter][ordre].push(entry);
+    } else {
+      if (!niveaux[levelKey]) niveaux[levelKey] = { key: levelKey, competences: [] };
+      if (!niveaux[levelKey].competences.some((c) => c.id === id)) niveaux[levelKey].competences.push(entry);
+    }
+  }
+  for (const letter of Object.keys(exactByLetterOrdre)) {
+    const ordres = Object.keys(exactByLetterOrdre[letter]).map(Number).sort((a, b) => a - b);
+    for (const n of ordres) {
+      const key = `${letter}${n}`;
+      const cumulative = [];
+      for (const k of ordres) {
+        if (k > n) break;
+        cumulative.push(...exactByLetterOrdre[letter][k]);
+      }
+      niveaux[key] = { key, competences: cumulative };
     }
   }
 
