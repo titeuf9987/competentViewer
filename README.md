@@ -34,14 +34,16 @@ Fichier chargé par défaut : `web/data/talent.xlsx`.
 
 ## Correspondance Competent ↔ Talent
 
-Une table de correspondance (`web/data/matching.csv`) relie certains soft skills de
-l'onglet « Métiers & compétences » à certaines compétences de l'onglet « Référentiel
-Talent », avec un degré de proximité (exact / proche / associé). Chaque soft skill
-concerné affiche un bloc « Référentiel Talent — compétences liées » vers les
-compétences Talent correspondantes, et réciproquement chaque compétence Talent
-concernée affiche un bloc « Métiers & compétences — soft skills liés » — cliquer sur un
-lien bascule automatiquement sur l'autre onglet, à la bonne page. C'est le seul pont
-entre les deux référentiels ; tout le reste de chaque onglet reste indépendant.
+Une table de correspondance (`web/data/matching.csv`) relie des compétences de
+l'onglet « Métiers & compétences » (skills essentiels/optionnels, soft skills ou
+digital skills — tout ce qui apparaît sous « Par compétence » dans cet onglet) à des
+compétences de l'onglet « Référentiel Talent », avec un degré de proximité (exact /
+proche / associé). Chaque compétence Competent concernée affiche un bloc « Référentiel
+Talent — compétences liées » vers les compétences Talent correspondantes, et
+réciproquement chaque compétence Talent concernée affiche un bloc « Métiers &
+compétences — compétences liées » — cliquer sur un lien bascule automatiquement sur
+l'autre onglet, à la bonne page. C'est le seul pont entre les deux référentiels ; tout
+le reste de chaque onglet reste indépendant.
 
 Ce fichier est chargé une fois au démarrage, en arrière-plan (comme les deux exports
 par défaut), indépendamment de l'onglet affiché. Pour le mettre à jour, remplacez

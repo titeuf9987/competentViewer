@@ -265,6 +265,8 @@ const TalentApp = (function () {
     return 'associe';
   }
 
+  const COMPETENT_ROUTE_SEGMENT = { skill: 'skill', soft: 'soft', digital: 'digital' };
+
   function competentMatchesBlock(titleFr) {
     const matches = matchesForTalentTitle(titleFr);
     if (!matches.length) return '';
@@ -279,16 +281,17 @@ const TalentApp = (function () {
       <div class="subgroup">
         <div class="label">${esc(RELATION_LABELS[rel] || rel)} <span class="count">${groups[rel].length}</span></div>
         <div class="chips">${groups[rel].map((m) => {
-          const s = CompetentApp.findSoftSkillByTitleFr(m.competentTitle);
-          if (s) {
-            const label = pick(s.title, currentLang) || m.competentTitle;
-            return `<button class="chip match-${relationClass(rel)}" data-nav="#/competent/competence/soft/${esc(s.code)}"><span class="code">${esc(s.code)}</span>${esc(label)}</button>`;
+          const found = CompetentApp.findCompetentEntityByTitleFr(m.competentTitle);
+          if (found) {
+            const label = pick(found.title, currentLang) || m.competentTitle;
+            const segment = COMPETENT_ROUTE_SEGMENT[found.kind];
+            return `<button class="chip match-${relationClass(rel)}" data-nav="#/competent/competence/${segment}/${esc(found.code)}"><span class="code">${esc(found.code)}</span>${esc(label)}</button>`;
           }
           return `<span class="chip static">${esc(m.competentTitle)}</span>`;
         }).join('')}</div>
       </div>
     `).join('');
-    return block('Métiers & compétences — soft skills liés', matches.length, groupsHtml);
+    return block('Métiers & compétences — compétences liées', matches.length, groupsHtml);
   }
 
   function renderCompetencePage(id) {

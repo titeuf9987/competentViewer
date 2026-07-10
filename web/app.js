@@ -504,6 +504,8 @@ const CompetentApp = (function () {
       `;
     }).join(''));
 
+    const matchesBlock = talentMatchesBlock(sk.title.fr);
+
     const wrap = el(`
       <div>
         <div class="breadcrumb"><a data-nav="#/${PREFIX}">Accueil</a> / Compétence</div>
@@ -514,6 +516,7 @@ const CompetentApp = (function () {
         </div>
         ${instancesBlock}
         ${csetBlock}
+        ${matchesBlock}
       </div>
     `);
     return wrap;
@@ -585,7 +588,7 @@ const CompetentApp = (function () {
     const kindLabel = kind === 'soft' ? 'Soft skill' : 'Digital skill';
     const kindCls = kind === 'soft' ? 'soft' : 'digital';
 
-    const matchesBlock = kind === 'soft' ? talentMatchesBlock(item.title.fr) : '';
+    const matchesBlock = talentMatchesBlock(item.title.fr);
 
     const wrap = el(`
       <div>
@@ -604,10 +607,18 @@ const CompetentApp = (function () {
     return wrap;
   }
 
-  function findSoftSkillByTitleFr(title) {
+  // Looks up any Competent "compétence" by its French title — a skill
+  // (SK-...), a soft skill or a digital skill — since the matching table
+  // isn't limited to soft skills, just happens to only reference those today.
+  function findCompetentEntityByTitleFr(title) {
     if (!DATA) return null;
-    const found = Object.values(DATA.softSkills).find((s) => s.title.fr === title);
-    return found || null;
+    const sk = Object.values(DATA.skills).find((s) => s.title.fr === title);
+    if (sk) return { kind: 'skill', code: sk.code, title: sk.title };
+    const so = Object.values(DATA.softSkills).find((s) => s.title.fr === title);
+    if (so) return { kind: 'soft', code: so.code, title: so.title };
+    const ds = Object.values(DATA.digitalSkills).find((s) => s.title.fr === title);
+    if (ds) return { kind: 'digital', code: ds.code, title: ds.title };
+    return null;
   }
 
   return {
@@ -617,6 +628,6 @@ const CompetentApp = (function () {
     loadFile,
     hasData: () => !!DATA,
     isLoading: () => loading,
-    findSoftSkillByTitleFr,
+    findCompetentEntityByTitleFr,
   };
 })();
