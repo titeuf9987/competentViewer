@@ -23,22 +23,27 @@ Fichier chargé par défaut : `web/data/export.xlsx`.
 
 ## Onglet « Référentiel Talent »
 
-Le référentiel de compétences bilingue Talent Brussels (40 compétences réparties en 5
-familles). Deux points d'entrée :
+Le référentiel de compétences bilingue Talent Brussels. Une Famille (5) regroupe des
+Thèmes (40, ex. « Communiquer ») ; chaque Thème se décompose en Compétences granulaires
+(109 au total, ex. « Communiquer par écrit ») — c'est cette Compétence qui porte les
+niveaux/profils requis. Deux points d'entrée :
 
-- **Par compétence** : description, famille (cliquable), profils &amp; niveaux requis
-  (cliquables), dimensions (avec les liens DigComp le cas échéant) et texte source
-  d'origine.
+- **Par compétence** : description, thème parent (cliquable), profils &amp; niveaux
+  requis (cliquables), détail des niveaux du référentiel.
 - **Par niveau** : un niveau est un couple **profil + palier** (ex. « Manager – A2 »,
   « Collaborateur·rice – D ») — cliquer dessus liste toutes les compétences requises à
   ce niveau. Un même palier (« A ») n'a pas le même sens d'un profil à l'autre (le grade
   A du profil Manager est lui-même subdivisé en A1/A2/A3/A3+), le niveau est donc défini
   par ce couple, pas par la seule lettre. Ce lien niveau ↔ compétence vient directement
-  de l'onglet source `Compétences par profil` — il n'est plus déduit des colonnes
-  `Niveau`/`Ordre` de l'onglet `Liens niveaux` (gardé uniquement comme détail informatif
-  sur la page de chaque compétence).
-- **Profil** (secondaire, cliquable depuis une page niveau ou compétence) : liste les
-  niveaux du profil et, pour chacun, les compétences requises.
+  de l'onglet source `Profils-niveaux-compétences` (joint sur l'ID compétence) — il
+  n'est plus déduit des colonnes `Niveau`/`Ordre` des onglets de liens (gardées
+  uniquement comme détail informatif sur les pages Thème/Compétence).
+
+Secondaires, cliquables :
+- **Thème** : description, compétences numériques (DigComp) rattachées, liste des
+  Compétences qui le composent.
+- **Famille** : liste des Thèmes.
+- **Profil** : liste des niveaux du profil et, pour chacun, les compétences requises.
 
 Fichier chargé par défaut : `web/data/talent.xlsx`.
 
@@ -85,9 +90,10 @@ Digital Skills`, `Occ.Prof - Essential Competence`, `Occ.Prof - Optional Compete
 `Occ.Prof - Areas of Interest`, `Occ.Prof - Competentiesets` (les numéros de version
 dans les noms d'onglets, ex. `3.25`, peuvent varier d'un export à l'autre : la lecture
 se fait par préfixe de nom). Le fichier « Référentiel Talent » attendu contient les
-onglets `Compétences`, `Liens niveaux`, `Dimensions`, `Texte source` et `Compétences par
-profil` (ce dernier optionnel : sans lui, le point d'entrée « Par niveau » et les pages
-Profil restent simplement vides plutôt que de faire échouer le chargement).
+onglets `Thèmes`, `Compétences`, `Compétences numériques`, `Liens thèmes-niveaux`,
+`Compétences par niveau` et `Profils-niveaux-compétences` (ce dernier optionnel : sans
+lui, le point d'entrée « Par niveau » et les pages Profil restent simplement vides
+plutôt que de faire échouer le chargement).
 
 ## Structure
 

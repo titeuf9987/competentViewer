@@ -597,10 +597,11 @@ const CompetentApp = (function () {
       <div class="subgroup">
         <div class="label">${esc(RELATION_LABELS[rel] || rel)} <span class="count">${groups[rel].length}</span></div>
         <div class="chips">${groups[rel].map((m) => {
-          const c = TalentApp.findCompetenceByTitleFr(m.talentTitle);
-          if (c) {
-            const label = pick(c.title, currentLang) || m.talentTitle;
-            return `<button class="chip match-${relationClass(rel)}" data-nav="#/talent/competence/${esc(c.id)}"><span class="code">${esc(c.id)}</span>${esc(label)}</button>`;
+          const found = TalentApp.findEntityByTitleFr(m.talentTitle);
+          if (found) {
+            const label = pick(found.title, currentLang) || m.talentTitle;
+            const segment = found.kind === 'theme' ? 'theme' : 'competence';
+            return `<button class="chip match-${relationClass(rel)}" data-nav="#/talent/${segment}/${esc(found.id)}"><span class="code">${esc(found.id)}</span>${esc(label)}</button>`;
           }
           return `<span class="chip static">${esc(m.talentTitle)}</span>`;
         }).join('')}</div>

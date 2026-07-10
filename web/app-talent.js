@@ -2,10 +2,16 @@
 // competency framework) from the Competent (VDAB) tab. Wrapped in its own
 // IIFE so it shares no state with CompetentApp; app-shell.js drives it
 // through the small surface returned at the bottom.
+//
+// Model: Famille groups Thèmes (the 40 broad competencies); each Thème
+// breaks down into granular Compétences; each Compétence carries its own
+// niveau/profil requirements. Famille, Thème and Profil are secondary,
+// clickable entities — the two entry points are Compétence and Niveau.
 const TalentApp = (function () {
   const PREFIX = 'talent';
   let DATA = null;
   let loading = false;
+  let entityIndex = null;
 
   const app = document.getElementById('app');
 
@@ -26,7 +32,7 @@ const TalentApp = (function () {
   }
 
   function loadFile(file) {
-    return parseFileToData(file).then((data) => { DATA = data; });
+    return parseFileToData(file).then((data) => { DATA = data; entityIndex = null; });
   }
 
   async function init() {
@@ -41,6 +47,7 @@ const TalentApp = (function () {
     } catch (err) {
       DATA = null;
     }
+    entityIndex = null;
     loading = false;
   }
 
@@ -86,6 +93,12 @@ const TalentApp = (function () {
     return `<button class="chip" data-nav="#/${PREFIX}/competence/${esc(id)}"><span class="code">${esc(id)}</span>${esc(label)}</button>`;
   }
 
+  function themeChip(id) {
+    const t = DATA.themes[id];
+    const label = t ? (pick(t.title, currentLang) || id) : id;
+    return `<button class="chip" data-nav="#/${PREFIX}/theme/${esc(id)}"><span class="code">${esc(id)}</span>${esc(label)}</button>`;
+  }
+
   function niveauChip(levelKey) {
     const n = DATA.niveaux[levelKey];
     const label = n ? (pick(n.label, currentLang) || levelKey) : levelKey;
@@ -104,6 +117,27 @@ const TalentApp = (function () {
     return `<button class="chip" data-nav="#/${PREFIX}/profil/${esc(key)}">${esc(label)}</button>`;
   }
 
+  // Looks up any Talent entity by its French title — a granular compétence,
+  // a thème, or a digital (DigComp) competence nested under a thème — since
+  // the matching table can reference any of them.
+  function buildEntityIndex() {
+    const idx = new Map();
+    for (const c of Object.values(DATA.competences)) if (c.title.fr) idx.set(c.title.fr, { kind: 'competence', id: c.id, title: c.title });
+    for (const t of Object.values(DATA.themes)) {
+      if (t.title.fr && !idx.has(t.title.fr)) idx.set(t.title.fr, { kind: 'theme', id: t.id, title: t.title });
+      for (const dc of t.digitalCompetences) {
+        if (dc.title.fr && !idx.has(dc.title.fr)) idx.set(dc.title.fr, { kind: 'theme', id: t.id, title: dc.title });
+      }
+    }
+    return idx;
+  }
+
+  function findEntityByTitleFr(title) {
+    if (!DATA) return null;
+    if (!entityIndex) entityIndex = buildEntityIndex();
+    return entityIndex.get(title) || null;
+  }
+
   // ---------- router ----------
 
   function renderRoute(parts) {
@@ -116,6 +150,8 @@ const TalentApp = (function () {
       app.appendChild(renderHome());
     } else if (parts[0] === 'competence' && parts[1]) {
       app.appendChild(renderCompetencePage(parts[1]));
+    } else if (parts[0] === 'theme' && parts[1]) {
+      app.appendChild(renderThemePage(parts[1]));
     } else if (parts[0] === 'niveau' && parts[1]) {
       app.appendChild(renderNiveauPage(decodeURIComponent(parts[1])));
     } else if (parts[0] === 'famille' && parts[1]) {
@@ -185,7 +221,7 @@ const TalentApp = (function () {
         <div class="entrypoints">
           <div class="entry-card">
             <h2>Par compétence</h2>
-            <p class="hint">Parcourez ou cherchez une des 40 compétences du référentiel pour voir sa description, ses niveaux, ses dimensions et son texte source.</p>
+            <p class="hint">Parcourez ou cherchez une compétence du référentiel pour voir sa description, son thème, ses niveaux requis.</p>
             <div class="search-box">
               <input id="search-competence-t" placeholder="Ex: Communiquer, Résoudre des problèmes…">
               <div class="search-results" id="results-competence-t"></div>
@@ -200,7 +236,7 @@ const TalentApp = (function () {
             </div>
           </div>
         </div>
-        <p class="stats-line">${DATA.meta.competenceCount} compétences · ${DATA.meta.familyCount} familles · ${DATA.meta.profilCount} profils · ${DATA.meta.levelCount} niveaux — source : ${esc(DATA.meta.generatedFrom)}</p>
+        <p class="stats-line">${DATA.meta.competenceCount} compétences · ${DATA.meta.themeCount} thèmes · ${DATA.meta.familyCount} familles · ${DATA.meta.profilCount} profils · ${DATA.meta.levelCount} niveaux — source : ${esc(DATA.meta.generatedFrom)}</p>
       </div>
     `);
 
@@ -264,7 +300,7 @@ const TalentApp = (function () {
     container.querySelectorAll('[data-nav]').forEach((n) => n.addEventListener('click', () => navigate(n.dataset.nav)));
   }
 
-  // ---------- competence page ----------
+  // ---------- cross-tab matching (shared by compétence & thème pages) ----------
 
   const RELATION_LABELS = { exact: 'Correspondance exacte', proche: 'Compétences proches', 'associé': 'Compétences associées' };
   function relationClass(rel) {
@@ -303,23 +339,23 @@ const TalentApp = (function () {
     return block('Métiers & compétences — compétences liées', matches.length, groupsHtml);
   }
 
+  // ---------- compétence page ----------
+
   function renderCompetencePage(id) {
     const c = DATA.competences[id];
     if (!c) return el(`<div><p>Compétence introuvable : ${esc(id)}</p></div>`);
     const title = pick(c.title, currentLang) || id;
+    const theme = DATA.themes[c.themeKey];
 
     const identBlock = `
       <section class="block">
         <h3>Identification</h3>
         <dl class="kv-grid">
           <dt>Code</dt><dd>${esc(c.id)}</dd>
-          <dt>Page</dt><dd>${esc(c.page)}</dd>
-          <dt>Famille</dt><dd>${familleChip(c.familyKey)}</dd>
-          ${c.marqueur ? `<dt>Marqueur</dt><dd><span class="badge neutral">${esc(c.marqueur)}</span></dd>` : ''}
-          ${c.niveauxRaw.fr ? `<dt>Niveaux (résumé FR)</dt><dd>${esc(c.niveauxRaw.fr)}</dd>` : ''}
-          ${c.niveauxRaw.nl ? `<dt>Niveaux (résumé NL)</dt><dd>${esc(c.niveauxRaw.nl)}</dd>` : ''}
-          ${c.source.fr ? `<dt>Source (FR)</dt><dd>${esc(c.source.fr)}</dd>` : ''}
-          ${c.source.nl ? `<dt>Source (NL)</dt><dd>${esc(c.source.nl)}</dd>` : ''}
+          <dt>Thème</dt><dd>${themeChip(c.themeKey)}</dd>
+          ${theme ? `<dt>Famille</dt><dd>${familleChip(theme.familyKey)}</dd>` : ''}
+          ${c.symbole ? `<dt>Symbole</dt><dd><span class="badge neutral">${esc(c.symbole)}</span></dd>` : ''}
+          ${c.pageSource ? `<dt>Page</dt><dd>${esc(c.pageSource)}</dd>` : ''}
         </dl>
       </section>
     `;
@@ -328,16 +364,15 @@ const TalentApp = (function () {
 
     const matchesBlock = competentMatchesBlock(c.title.fr);
 
-    const profilNiveauxBlock = block('Profils &amp; niveaux requis', c.profilNiveaux.length, `
-      <div class="chips">${c.profilNiveaux.map((p) => niveauChip(p.levelKey) + (p.requis.fr && p.requis.fr.toLowerCase() !== 'oui' ? ` <span class="badge neutral">${esc(p.requis.fr)}</span>` : '')).join('')}</div>
+    const profilNiveauxBlock = block('Profils & niveaux requis', c.profilNiveaux.length, `
+      <div class="chips">${c.profilNiveaux.map((p) => niveauChip(p.levelKey)).join('')}</div>
     `);
 
     const niveauxBlock = block('Niveaux (détail référentiel)', c.niveaux.length, `
       <table class="simple">
-        <thead><tr><th>Ordre</th><th>Niveau (FR)</th><th>Niveau (NL)</th><th>Marqueur</th><th>Page</th></tr></thead>
+        <thead><tr><th>Niveau (FR)</th><th>Niveau (NL)</th><th>Marqueur</th><th>Page</th></tr></thead>
         <tbody>${c.niveaux.map((n) => `
           <tr>
-            <td>${esc(n.ordre)}</td>
             <td>${esc(n.niveau.fr || '')}</td>
             <td>${esc(n.niveau.nl || '')}</td>
             <td>${n.marqueur ? `<span class="badge neutral">${esc(n.marqueur)}</span>` : ''}</td>
@@ -346,32 +381,6 @@ const TalentApp = (function () {
         `).join('')}</tbody>
       </table>
     `);
-
-    const dimensionsBlock = block('Dimensions', c.dimensions.length, c.dimensions.map((d) => `
-      <div class="competence-card">
-        <div class="cc-meta">
-          <span class="badge neutral">${esc(d.symbole || d.type)}</span> ${esc(d.type)}${d.digCompCode ? ` · DigComp ${esc(d.digCompCode)}` : ''} · ordre ${esc(d.ordre)} · page ${esc(d.pageSource)}
-        </div>
-        <div class="cc-title" style="cursor:default;color:var(--text);">${esc(pick(d.title, currentLang) || '')}</div>
-        ${twoColLang(d.description)}
-      </div>
-    `).join(''));
-
-    const texteBlock = c.texteSource ? `
-      <section class="block">
-        <h3>Texte source</h3>
-        <div class="two-col">
-          <div>
-            <div class="lang-label">FR</div>
-            <div class="text-block" style="white-space:pre-wrap;font-size:12px;max-height:400px;overflow-y:auto;">${esc(c.texteSource.texte.fr || '')}</div>
-          </div>
-          <div>
-            <div class="lang-label">NL</div>
-            <div class="text-block" style="white-space:pre-wrap;font-size:12px;max-height:400px;overflow-y:auto;">${esc(c.texteSource.texte.nl || '')}</div>
-          </div>
-        </div>
-      </section>
-    ` : '';
 
     const wrap = el(`
       <div>
@@ -385,8 +394,77 @@ const TalentApp = (function () {
         ${matchesBlock}
         ${profilNiveauxBlock}
         ${niveauxBlock}
-        ${dimensionsBlock}
-        ${texteBlock}
+      </div>
+    `);
+    return wrap;
+  }
+
+  // ---------- thème page ----------
+
+  function renderThemePage(id) {
+    const t = DATA.themes[id];
+    if (!t) return el(`<div><p>Thème introuvable : ${esc(id)}</p></div>`);
+    const title = pick(t.title, currentLang) || id;
+
+    const identBlock = `
+      <section class="block">
+        <h3>Identification</h3>
+        <dl class="kv-grid">
+          <dt>Code</dt><dd>${esc(t.id)}</dd>
+          <dt>Page</dt><dd>${esc(t.page)}</dd>
+          <dt>Famille</dt><dd>${familleChip(t.familyKey)}</dd>
+          ${t.marqueur ? `<dt>Marqueur</dt><dd><span class="badge neutral">${esc(t.marqueur)}</span></dd>` : ''}
+          ${t.niveauxRaw.fr ? `<dt>Niveaux (résumé FR)</dt><dd>${esc(t.niveauxRaw.fr)}</dd>` : ''}
+          ${t.niveauxRaw.nl ? `<dt>Niveaux (résumé NL)</dt><dd>${esc(t.niveauxRaw.nl)}</dd>` : ''}
+          ${t.source.fr ? `<dt>Source (FR)</dt><dd>${esc(t.source.fr)}</dd>` : ''}
+          ${t.source.nl ? `<dt>Source (NL)</dt><dd>${esc(t.source.nl)}</dd>` : ''}
+        </dl>
+      </section>
+    `;
+
+    const descBlock = (t.description.fr || t.description.nl) ? `<section class="block"><h3>Description</h3>${twoColLang(t.description)}</section>` : '';
+
+    const matchesBlock = competentMatchesBlock(t.title.fr);
+
+    const competencesBlock = block('Compétences de ce thème', t.competences.length, `
+      <div class="chips">${t.competences.map(competenceChip).join('')}</div>
+    `);
+
+    const digitalBlock = block('Compétences numériques (DigComp)', t.digitalCompetences.length, t.digitalCompetences.map((d) => `
+      <div class="competence-card">
+        <div class="cc-meta">DigComp ${esc(d.digCompCode)} · page ${esc(d.pageSource)}</div>
+        ${twoColLang(d.title)}
+      </div>
+    `).join(''));
+
+    const niveauxBlock = block('Niveaux (détail référentiel)', t.niveaux.length, `
+      <table class="simple">
+        <thead><tr><th>Ordre</th><th>Niveau (FR)</th><th>Niveau (NL)</th><th>Marqueur</th><th>Page</th></tr></thead>
+        <tbody>${t.niveaux.map((n) => `
+          <tr>
+            <td>${esc(n.ordre)}</td>
+            <td>${esc(n.niveau.fr || '')}</td>
+            <td>${esc(n.niveau.nl || '')}</td>
+            <td>${n.marqueur ? `<span class="badge neutral">${esc(n.marqueur)}</span>` : ''}</td>
+            <td>${esc(n.pageSource)}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    `);
+
+    const wrap = el(`
+      <div>
+        <div class="breadcrumb"><a data-nav="#/${PREFIX}">Accueil</a> / Thème</div>
+        <div class="detail-header">
+          <span class="code-tag">${esc(t.id)}</span>
+          <h2>${esc(title)}</h2>
+        </div>
+        ${identBlock}
+        ${descBlock}
+        ${matchesBlock}
+        ${competencesBlock}
+        ${digitalBlock}
+        ${niveauxBlock}
       </div>
     `);
     return wrap;
@@ -411,7 +489,6 @@ const TalentApp = (function () {
           <h3>Compétences requises <span class="count">${niveau.competences.length}</span></h3>
           <div class="chips">${niveau.competences.map(competenceChip).join('')}</div>
         </section>
-        ${niveau.source ? `<p class="stats-line">Source : ${esc(niveau.source)}</p>` : ''}
       </div>
     `);
     return wrap;
@@ -464,18 +541,12 @@ const TalentApp = (function () {
           <h2>${esc(title)}</h2>
         </div>
         <section class="block">
-          <h3>Compétences de cette famille <span class="count">${f.competences.length}</span></h3>
-          <div class="chips">${f.competences.map(competenceChip).join('')}</div>
+          <h3>Thèmes de cette famille <span class="count">${f.themes.length}</span></h3>
+          <div class="chips">${f.themes.map(themeChip).join('')}</div>
         </section>
       </div>
     `);
     return wrap;
-  }
-
-  function findCompetenceByTitleFr(title) {
-    if (!DATA) return null;
-    const found = Object.values(DATA.competences).find((c) => c.title.fr === title);
-    return found || null;
   }
 
   return {
@@ -485,6 +556,6 @@ const TalentApp = (function () {
     loadFile,
     hasData: () => !!DATA,
     isLoading: () => loading,
-    findCompetenceByTitleFr,
+    findEntityByTitleFr,
   };
 })();
