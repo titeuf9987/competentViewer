@@ -12,13 +12,19 @@ function slugify(s) {
     .replace(/(^-|-$)/g, '');
 }
 
-function stripMarker(s) {
-  return (s || '').replace(/\s*\(M1\)\s*/g, '').trim();
+function findSheetNameOptional(workbook, prefix) {
+  return workbook.SheetNames.find((n) => n.toLowerCase().startsWith(prefix.toLowerCase())) || null;
+}
+
+const LEVEL_RANK = { D: 0, C: 1, B: 2, A: 3, A1: 4, A2: 5, A3: 6, 'A3+': 7 };
+function levelRank(niveau) {
+  return LEVEL_RANK[niveau] !== undefined ? LEVEL_RANK[niveau] : 99;
 }
 
 function parseTalentWorkbook(workbook, sourceName) {
   const competences = {};
   const familles = {};
+  const profils = {};
   const niveaux = {};
 
   // --- Compétences (base) ---
@@ -36,6 +42,7 @@ function parseTalentWorkbook(workbook, sourceName) {
       niveauxRaw: lang(nivNl, nivFr),
       source: lang(srcNl, srcFr),
       niveaux: [],
+      profilNiveaux: [],
       dimensions: [],
       texteSource: null,
     };
@@ -44,44 +51,47 @@ function parseTalentWorkbook(workbook, sourceName) {
   }
 
   // --- Liens niveaux ---
-  // The letter alone (A/B/C/D) is not the actual level: the same letter
-  // means a different thing depending on where it sits in a given
-  // compétence's ladder (e.g. a 2-rung ladder ending in A ("B, A") is a
-  // different level than a 5-rung one ("Indicateurs standards, D, C, B, A")).
-  // "Ordre" is that rung position, so the real level id is letter+ordre
-  // (A1, A2, A3...), per the reference's own numbering (e.g. "A3"). This
-  // does not use the Compétences tab's summary "Niveaux" column at all.
-  // The scale is also cumulative: reaching A5 implies A1-A4 too, so the
-  // "A5" level's competences are the union of A1..A5 (same for B/C/D).
-  const exactByLetterOrdre = {}; // { A: { 1: [{id,marqueur,pageSource}], 2: [...] }, ... }
+  // Kept as raw, informational per-compétence detail only (Ordre, Niveau,
+  // Marqueur, Page) — NOT used to build any browsable "niveau" entity. The
+  // actual niveau/compétence link lives in "Compétences par profil" below.
   for (const r of sheetRows(workbook, 'Liens niveaux')) {
     const [id, cFr, cNl, ordre, nivFr, nivNl, marqueur, pageSource] = r;
     if (!competences[id]) continue;
-    const baseLetter = stripMarker(nivFr);
-    const isScaled = /^[ABCD]$/.test(baseLetter);
-    const levelKey = isScaled ? `${baseLetter}${ordre}` : baseLetter;
-    competences[id].niveaux.push({ ordre, niveau: lang(nivNl, nivFr), levelKey, marqueur: nz(marqueur), pageSource });
-    const entry = { id, marqueur: nz(marqueur), pageSource, exactLevel: levelKey };
-    if (isScaled) {
-      if (!exactByLetterOrdre[baseLetter]) exactByLetterOrdre[baseLetter] = {};
-      if (!exactByLetterOrdre[baseLetter][ordre]) exactByLetterOrdre[baseLetter][ordre] = [];
-      exactByLetterOrdre[baseLetter][ordre].push(entry);
-    } else {
-      if (!niveaux[levelKey]) niveaux[levelKey] = { key: levelKey, competences: [] };
-      if (!niveaux[levelKey].competences.some((c) => c.id === id)) niveaux[levelKey].competences.push(entry);
-    }
+    competences[id].niveaux.push({ ordre, niveau: lang(nivNl, nivFr), marqueur: nz(marqueur), pageSource });
   }
-  for (const letter of Object.keys(exactByLetterOrdre)) {
-    const ordres = Object.keys(exactByLetterOrdre[letter]).map(Number).sort((a, b) => a - b);
-    for (const n of ordres) {
-      const key = `${letter}${n}`;
-      const cumulative = [];
-      for (const k of ordres) {
-        if (k > n) break;
-        cumulative.push(...exactByLetterOrdre[letter][k]);
+
+  // --- Compétences par profil ---
+  // The authoritative niveau <-> compétence link: each row is one (profil,
+  // niveau, compétence) requirement. A niveau is identified by profil+niveau
+  // (e.g. "Manager – A2"), not by letter+ordre — the same letter means
+  // different things for different profils (Manager's "A" grade is itself
+  // split into A1/A2/A3/A3+, while other profils just have a plain "A").
+  const profilSheetName = findSheetNameOptional(workbook, 'Compétences par profil');
+  if (profilSheetName) {
+    for (const r of sheetRows(workbook, 'Compétences par profil')) {
+      const [profilFr, profilNl, niveau, famFr, famNl, cFr, cNl, ordreRef, requiseFr, requiseNl, source] = r;
+      const id = `C${String(ordreRef).padStart(2, '0')}`;
+      if (!competences[id]) continue;
+      const profilKey = slugify(profilFr);
+      if (!profils[profilKey]) profils[profilKey] = { key: profilKey, title: lang(profilNl, profilFr), niveaux: [] };
+      const levelKey = `${profilKey}__${niveau}`;
+      if (!profils[profilKey].niveaux.includes(levelKey)) profils[profilKey].niveaux.push(levelKey);
+      if (!niveaux[levelKey]) {
+        niveaux[levelKey] = {
+          key: levelKey,
+          profilKey,
+          niveau,
+          label: { fr: `${profilFr} – ${niveau}`, nl: `${profilNl} – ${niveau}` },
+          source: nz(source),
+          competences: [],
+        };
       }
-      niveaux[key] = { key, competences: cumulative };
+      if (!niveaux[levelKey].competences.includes(id)) niveaux[levelKey].competences.push(id);
+      if (!competences[id].profilNiveaux.some((p) => p.levelKey === levelKey)) {
+        competences[id].profilNiveaux.push({ levelKey, profilKey, niveau, requis: lang(requiseNl, requiseFr) });
+      }
     }
+    for (const p of Object.values(profils)) p.niveaux.sort((a, b) => levelRank(niveaux[a].niveau) - levelRank(niveaux[b].niveau));
   }
 
   // --- Dimensions (incl. DigComp rows) ---
@@ -107,6 +117,7 @@ function parseTalentWorkbook(workbook, sourceName) {
   for (const c of Object.values(competences)) {
     c.niveaux.sort((a, b) => a.ordre - b.ordre);
     c.dimensions.sort((a, b) => a.ordre - b.ordre);
+    c.profilNiveaux.sort((a, b) => levelRank(a.niveau) - levelRank(b.niveau));
   }
 
   return {
@@ -115,10 +126,12 @@ function parseTalentWorkbook(workbook, sourceName) {
       generatedAt: new Date().toISOString(),
       competenceCount: Object.keys(competences).length,
       familyCount: Object.keys(familles).length,
+      profilCount: Object.keys(profils).length,
       levelCount: Object.keys(niveaux).length,
     },
     competences,
     familles,
+    profils,
     niveaux,
   };
 }

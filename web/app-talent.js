@@ -86,8 +86,9 @@ const TalentApp = (function () {
     return `<button class="chip" data-nav="#/${PREFIX}/competence/${esc(id)}"><span class="code">${esc(id)}</span>${esc(label)}</button>`;
   }
 
-  function niveauChip(levelKey, marqueur) {
-    const label = levelKey + (marqueur ? ` (${marqueur})` : '');
+  function niveauChip(levelKey) {
+    const n = DATA.niveaux[levelKey];
+    const label = n ? (pick(n.label, currentLang) || levelKey) : levelKey;
     return `<button class="chip" data-nav="#/${PREFIX}/niveau/${esc(encodeURIComponent(levelKey))}">${esc(label)}</button>`;
   }
 
@@ -95,6 +96,12 @@ const TalentApp = (function () {
     const f = DATA.familles[key];
     const label = f ? (pick(f.title, currentLang) || key) : key;
     return `<button class="chip" data-nav="#/${PREFIX}/famille/${esc(key)}">${esc(label)}</button>`;
+  }
+
+  function profilChip(key) {
+    const p = DATA.profils[key];
+    const label = p ? (pick(p.title, currentLang) || key) : key;
+    return `<button class="chip" data-nav="#/${PREFIX}/profil/${esc(key)}">${esc(label)}</button>`;
   }
 
   // ---------- router ----------
@@ -113,6 +120,8 @@ const TalentApp = (function () {
       app.appendChild(renderNiveauPage(decodeURIComponent(parts[1])));
     } else if (parts[0] === 'famille' && parts[1]) {
       app.appendChild(renderFamillePage(parts[1]));
+    } else if (parts[0] === 'profil' && parts[1]) {
+      app.appendChild(renderProfilPage(parts[1]));
     } else {
       app.appendChild(renderHome());
     }
@@ -184,14 +193,14 @@ const TalentApp = (function () {
           </div>
           <div class="entry-card">
             <h2>Par niveau</h2>
-            <p class="hint">Parcourez ou cherchez un niveau (D, C, B, A…) pour voir toutes les compétences qui s'y déclinent.</p>
+            <p class="hint">Parcourez ou cherchez un niveau (profil + palier, ex. Manager – A2) pour voir toutes les compétences requises.</p>
             <div class="search-box">
-              <input id="search-niveau-t" placeholder="Ex: D, C, B, A…">
+              <input id="search-niveau-t" placeholder="Ex: Manager – A2, Collaborateur·rice – D…">
               <div class="search-results" id="results-niveau-t"></div>
             </div>
           </div>
         </div>
-        <p class="stats-line">${DATA.meta.competenceCount} compétences · ${DATA.meta.familyCount} familles · ${DATA.meta.levelCount} niveaux — source : ${esc(DATA.meta.generatedFrom)}</p>
+        <p class="stats-line">${DATA.meta.competenceCount} compétences · ${DATA.meta.familyCount} familles · ${DATA.meta.profilCount} profils · ${DATA.meta.levelCount} niveaux — source : ${esc(DATA.meta.generatedFrom)}</p>
       </div>
     `);
 
@@ -231,8 +240,8 @@ const TalentApp = (function () {
   }
 
   function renderNiveauResults(container, query) {
-    const all = Object.keys(DATA.niveaux).map((key) => ({
-      nav: `#/${PREFIX}/niveau/${encodeURIComponent(key)}`, code: `${DATA.niveaux[key].competences.length}`, label: key,
+    const all = Object.values(DATA.niveaux).map((n) => ({
+      nav: `#/${PREFIX}/niveau/${encodeURIComponent(n.key)}`, code: `${n.competences.length}`, label: pick(n.label, currentLang) || n.key,
     }));
     if (!query) {
       renderResultList(container, all.sort((a, b) => a.label.localeCompare(b.label)));
@@ -307,6 +316,8 @@ const TalentApp = (function () {
           <dt>Page</dt><dd>${esc(c.page)}</dd>
           <dt>Famille</dt><dd>${familleChip(c.familyKey)}</dd>
           ${c.marqueur ? `<dt>Marqueur</dt><dd><span class="badge neutral">${esc(c.marqueur)}</span></dd>` : ''}
+          ${c.niveauxRaw.fr ? `<dt>Niveaux (résumé FR)</dt><dd>${esc(c.niveauxRaw.fr)}</dd>` : ''}
+          ${c.niveauxRaw.nl ? `<dt>Niveaux (résumé NL)</dt><dd>${esc(c.niveauxRaw.nl)}</dd>` : ''}
           ${c.source.fr ? `<dt>Source (FR)</dt><dd>${esc(c.source.fr)}</dd>` : ''}
           ${c.source.nl ? `<dt>Source (NL)</dt><dd>${esc(c.source.nl)}</dd>` : ''}
         </dl>
@@ -317,13 +328,17 @@ const TalentApp = (function () {
 
     const matchesBlock = competentMatchesBlock(c.title.fr);
 
-    const niveauxBlock = block('Niveaux', c.niveaux.length, `
+    const profilNiveauxBlock = block('Profils &amp; niveaux requis', c.profilNiveaux.length, `
+      <div class="chips">${c.profilNiveaux.map((p) => niveauChip(p.levelKey) + (p.requis.fr && p.requis.fr.toLowerCase() !== 'oui' ? ` <span class="badge neutral">${esc(p.requis.fr)}</span>` : '')).join('')}</div>
+    `);
+
+    const niveauxBlock = block('Niveaux (détail référentiel)', c.niveaux.length, `
       <table class="simple">
         <thead><tr><th>Ordre</th><th>Niveau (FR)</th><th>Niveau (NL)</th><th>Marqueur</th><th>Page</th></tr></thead>
         <tbody>${c.niveaux.map((n) => `
           <tr>
             <td>${esc(n.ordre)}</td>
-            <td>${niveauChip(n.levelKey, null)}</td>
+            <td>${esc(n.niveau.fr || '')}</td>
             <td>${esc(n.niveau.nl || '')}</td>
             <td>${n.marqueur ? `<span class="badge neutral">${esc(n.marqueur)}</span>` : ''}</td>
             <td>${esc(n.pageSource)}</td>
@@ -368,6 +383,7 @@ const TalentApp = (function () {
         ${identBlock}
         ${descBlock}
         ${matchesBlock}
+        ${profilNiveauxBlock}
         ${niveauxBlock}
         ${dimensionsBlock}
         ${texteBlock}
@@ -381,39 +397,53 @@ const TalentApp = (function () {
   function renderNiveauPage(levelKey) {
     const niveau = DATA.niveaux[levelKey];
     if (!niveau) return el(`<div><p>Niveau introuvable : ${esc(levelKey)}</p></div>`);
-
-    const groups = {};
-    for (const c of niveau.competences) {
-      const g = c.exactLevel || levelKey;
-      if (!groups[g]) groups[g] = [];
-      groups[g].push(c);
-    }
-    const groupKeys = Object.keys(groups).sort((a, b) => {
-      const na = parseInt(a.replace(/\D/g, ''), 10);
-      const nb = parseInt(b.replace(/\D/g, ''), 10);
-      if (!isNaN(na) && !isNaN(nb)) return na - nb;
-      return a.localeCompare(b);
-    });
-    const isCumulative = groupKeys.length > 1;
-
-    const groupsHtml = groupKeys.map((g) => `
-      <div class="subgroup">
-        <div class="label">${esc(g)}${g === levelKey ? ' (spécifique)' : ''} <span class="count">${groups[g].length}</span></div>
-        <div class="chips">${groups[g].map((c) => competenceChip(c.id)).join('')}</div>
-      </div>
-    `).join('');
+    const label = pick(niveau.label, currentLang) || levelKey;
 
     const wrap = el(`
       <div>
         <div class="breadcrumb"><a data-nav="#/${PREFIX}">Accueil</a> / Niveau</div>
         <div class="detail-header">
-          <span class="code-tag">${esc(levelKey)}</span>
-          <h2>${esc(levelKey)}</h2>
-          ${isCumulative ? `<div class="subtitle">Niveau cumulatif : ${esc(levelKey)} inclut les niveaux ${esc(groupKeys.filter((g) => g !== levelKey).join(', '))} + ce qui est spécifique à ${esc(levelKey)}</div>` : ''}
+          <span class="code-tag">${esc(niveau.niveau)}</span>
+          <h2>${esc(label)}</h2>
+          <div class="subtitle">Profil ${profilChip(niveau.profilKey)}</div>
         </div>
         <section class="block">
-          <h3>Compétences concernées <span class="count">${niveau.competences.length}</span></h3>
-          ${groupsHtml}
+          <h3>Compétences requises <span class="count">${niveau.competences.length}</span></h3>
+          <div class="chips">${niveau.competences.map(competenceChip).join('')}</div>
+        </section>
+        ${niveau.source ? `<p class="stats-line">Source : ${esc(niveau.source)}</p>` : ''}
+      </div>
+    `);
+    return wrap;
+  }
+
+  // ---------- profil page ----------
+
+  function renderProfilPage(key) {
+    const p = DATA.profils[key];
+    if (!p) return el(`<div><p>Profil introuvable : ${esc(key)}</p></div>`);
+    const title = pick(p.title, currentLang) || key;
+
+    const niveauxHtml = p.niveaux.map((levelKey) => {
+      const n = DATA.niveaux[levelKey];
+      if (!n) return '';
+      return `
+        <div class="subgroup">
+          <div class="label">${esc(n.niveau)} <span class="count">${n.competences.length}</span></div>
+          <div class="chips">${n.competences.map(competenceChip).join('')}</div>
+        </div>
+      `;
+    }).join('');
+
+    const wrap = el(`
+      <div>
+        <div class="breadcrumb"><a data-nav="#/${PREFIX}">Accueil</a> / Profil</div>
+        <div class="detail-header">
+          <h2>${esc(title)}</h2>
+        </div>
+        <section class="block">
+          <h3>Niveaux <span class="count">${p.niveaux.length}</span></h3>
+          ${niveauxHtml}
         </section>
       </div>
     `);

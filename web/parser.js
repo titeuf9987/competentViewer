@@ -3,7 +3,9 @@
 // nothing about a specific export is baked into this file.
 
 function findSheetName(workbook, prefix) {
-  const name = workbook.SheetNames.find((n) => n.toLowerCase().startsWith(prefix.toLowerCase()));
+  const p = prefix.toLowerCase();
+  const exact = workbook.SheetNames.find((n) => n.toLowerCase() === p);
+  const name = exact || workbook.SheetNames.find((n) => n.toLowerCase().startsWith(p));
   if (!name) throw new Error(`Onglet introuvable pour le préfixe "${prefix}". Onglets présents: ${workbook.SheetNames.join(', ')}`);
   return name;
 }
