@@ -5,6 +5,7 @@ const CompetentApp = (function () {
   const PREFIX = 'competent';
   let DATA = null;
   let loading = false;
+  const compFilter = { skill: true, soft: true, digital: true };
 
   const app = document.getElementById('app');
 
@@ -213,6 +214,11 @@ const CompetentApp = (function () {
           <div class="entry-card">
             <h2>Par compétence</h2>
             <p class="hint">Parcourez ou cherchez une compétence, un soft skill ou un digital skill pour voir tous les métiers concernés.</p>
+            <div class="filter-toggles" id="comp-filter-toggles">
+              <button type="button" class="filter-toggle ${compFilter.skill ? 'active' : ''}" data-kind="skill">Compétences</button>
+              <button type="button" class="filter-toggle soft ${compFilter.soft ? 'active' : ''}" data-kind="soft">Soft skills</button>
+              <button type="button" class="filter-toggle digital ${compFilter.digital ? 'active' : ''}" data-kind="digital">Digital skills</button>
+            </div>
             <div class="search-box">
               <input id="search-competence" placeholder="Ex: Communiceren, Analyseren…">
               <div class="search-results" id="results-competence"></div>
@@ -236,6 +242,15 @@ const CompetentApp = (function () {
       renderCompResults(resultsComp, searchComp.value.trim());
     });
     renderCompResults(resultsComp, '');
+
+    wrap.querySelector('#comp-filter-toggles').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-kind]');
+      if (!btn) return;
+      const kind = btn.dataset.kind;
+      compFilter[kind] = !compFilter[kind];
+      btn.classList.toggle('active', compFilter[kind]);
+      renderCompResults(resultsComp, searchComp.value.trim());
+    });
 
     return wrap;
   }
@@ -283,14 +298,20 @@ const CompetentApp = (function () {
 
   function allCompetenceEntries() {
     const all = [];
-    for (const sk of Object.values(DATA.skills)) {
-      all.push({ nav: `#/${PREFIX}/competence/skill/${sk.code}`, code: sk.code, label: pick(sk.title, currentLang) || sk.code, kindLabel: 'Compétence', kindCls: '' });
+    if (compFilter.skill) {
+      for (const sk of Object.values(DATA.skills)) {
+        all.push({ nav: `#/${PREFIX}/competence/skill/${sk.code}`, code: sk.code, label: pick(sk.title, currentLang) || sk.code, kindLabel: 'Compétence', kindCls: '' });
+      }
     }
-    for (const ss of Object.values(DATA.softSkills)) {
-      all.push({ nav: `#/${PREFIX}/competence/soft/${ss.code}`, code: ss.code, label: pick(ss.title, currentLang) || ss.code, kindLabel: 'Soft skill', kindCls: 'soft' });
+    if (compFilter.soft) {
+      for (const ss of Object.values(DATA.softSkills)) {
+        all.push({ nav: `#/${PREFIX}/competence/soft/${ss.code}`, code: ss.code, label: pick(ss.title, currentLang) || ss.code, kindLabel: 'Soft skill', kindCls: 'soft' });
+      }
     }
-    for (const ds of Object.values(DATA.digitalSkills)) {
-      all.push({ nav: `#/${PREFIX}/competence/digital/${ds.code}`, code: ds.code, label: pick(ds.title, currentLang) || ds.code, kindLabel: 'Digital skill', kindCls: 'digital' });
+    if (compFilter.digital) {
+      for (const ds of Object.values(DATA.digitalSkills)) {
+        all.push({ nav: `#/${PREFIX}/competence/digital/${ds.code}`, code: ds.code, label: pick(ds.title, currentLang) || ds.code, kindLabel: 'Digital skill', kindCls: 'digital' });
+      }
     }
     return all;
   }
@@ -303,20 +324,26 @@ const CompetentApp = (function () {
     }
     const q = query.toLowerCase();
     const results = [];
-    for (const sk of Object.values(DATA.skills)) {
-      const label = pick(sk.title, currentLang) || '';
-      const score = matchScore(label, q);
-      if (score !== -1) results.push({ nav: `#/${PREFIX}/competence/skill/${sk.code}`, code: sk.code, label, score, kindLabel: 'Compétence', kindCls: '' });
+    if (compFilter.skill) {
+      for (const sk of Object.values(DATA.skills)) {
+        const label = pick(sk.title, currentLang) || '';
+        const score = matchScore(label, q);
+        if (score !== -1) results.push({ nav: `#/${PREFIX}/competence/skill/${sk.code}`, code: sk.code, label, score, kindLabel: 'Compétence', kindCls: '' });
+      }
     }
-    for (const ss of Object.values(DATA.softSkills)) {
-      const label = pick(ss.title, currentLang) || '';
-      const score = matchScore(label, q);
-      if (score !== -1) results.push({ nav: `#/${PREFIX}/competence/soft/${ss.code}`, code: ss.code, label, score, kindLabel: 'Soft skill', kindCls: 'soft' });
+    if (compFilter.soft) {
+      for (const ss of Object.values(DATA.softSkills)) {
+        const label = pick(ss.title, currentLang) || '';
+        const score = matchScore(label, q);
+        if (score !== -1) results.push({ nav: `#/${PREFIX}/competence/soft/${ss.code}`, code: ss.code, label, score, kindLabel: 'Soft skill', kindCls: 'soft' });
+      }
     }
-    for (const ds of Object.values(DATA.digitalSkills)) {
-      const label = pick(ds.title, currentLang) || '';
-      const score = matchScore(label, q);
-      if (score !== -1) results.push({ nav: `#/${PREFIX}/competence/digital/${ds.code}`, code: ds.code, label, score, kindLabel: 'Digital skill', kindCls: 'digital' });
+    if (compFilter.digital) {
+      for (const ds of Object.values(DATA.digitalSkills)) {
+        const label = pick(ds.title, currentLang) || '';
+        const score = matchScore(label, q);
+        if (score !== -1) results.push({ nav: `#/${PREFIX}/competence/digital/${ds.code}`, code: ds.code, label, score, kindLabel: 'Digital skill', kindCls: 'digital' });
+      }
     }
     results.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
     renderResultList(container, results.slice(0, 40));

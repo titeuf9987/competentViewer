@@ -223,6 +223,31 @@ main {
   font-size: 13px;
 }
 
+.filter-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.filter-toggle {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  padding: 4px 11px;
+  border-radius: 100px;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+.filter-toggle.active {
+  opacity: 1;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  border-color: transparent;
+}
+.filter-toggle.soft.active { background: var(--chip-soft-bg); color: var(--chip-soft-text); }
+.filter-toggle.digital.active { background: var(--chip-digital-bg); color: var(--chip-digital-text); }
+
 .search-box {
   position: relative;
 }
