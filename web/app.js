@@ -5,6 +5,7 @@ const CompetentApp = (function () {
   const PREFIX = 'competent';
   let DATA = null;
   let loading = false;
+  let competentEntityIndex = null;
   const compFilter = { skill: true, soft: true, digital: true };
 
   const app = document.getElementById('app');
@@ -26,7 +27,7 @@ const CompetentApp = (function () {
   }
 
   function loadFile(file) {
-    return parseFileToData(file).then((data) => { DATA = data; });
+    return parseFileToData(file).then((data) => { DATA = data; competentEntityIndex = null; });
   }
 
   async function init() {
@@ -41,6 +42,7 @@ const CompetentApp = (function () {
     } catch (err) {
       DATA = null;
     }
+    competentEntityIndex = null;
     loading = false;
   }
 
@@ -637,15 +639,20 @@ const CompetentApp = (function () {
   // Looks up any Competent "compétence" by its French title — a skill
   // (SK-...), a soft skill or a digital skill — since the matching table
   // isn't limited to soft skills, just happens to only reference those today.
+  // The matching file can have thousands of rows pointing back at a single
+  // Talent compétence, so this is indexed once rather than scanned per call.
+  function buildCompetentEntityIndex() {
+    const idx = new Map();
+    for (const sk of Object.values(DATA.skills)) if (sk.title.fr) idx.set(sk.title.fr, { kind: 'skill', code: sk.code, title: sk.title });
+    for (const so of Object.values(DATA.softSkills)) if (so.title.fr) idx.set(so.title.fr, { kind: 'soft', code: so.code, title: so.title });
+    for (const ds of Object.values(DATA.digitalSkills)) if (ds.title.fr) idx.set(ds.title.fr, { kind: 'digital', code: ds.code, title: ds.title });
+    return idx;
+  }
+
   function findCompetentEntityByTitleFr(title) {
     if (!DATA) return null;
-    const sk = Object.values(DATA.skills).find((s) => s.title.fr === title);
-    if (sk) return { kind: 'skill', code: sk.code, title: sk.title };
-    const so = Object.values(DATA.softSkills).find((s) => s.title.fr === title);
-    if (so) return { kind: 'soft', code: so.code, title: so.title };
-    const ds = Object.values(DATA.digitalSkills).find((s) => s.title.fr === title);
-    if (ds) return { kind: 'digital', code: ds.code, title: ds.title };
-    return null;
+    if (!competentEntityIndex) competentEntityIndex = buildCompetentEntityIndex();
+    return competentEntityIndex.get(title) || null;
   }
 
   return {
