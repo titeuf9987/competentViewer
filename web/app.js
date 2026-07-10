@@ -16,8 +16,59 @@ document.getElementById('langtoggle').addEventListener('click', (e) => {
   render();
 });
 
+const refreshBtn = document.getElementById('refresh-btn');
+const refreshInput = document.getElementById('header-file-input');
+const refreshStatus = document.getElementById('refresh-status');
+
+refreshBtn.addEventListener('click', () => refreshInput.click());
+refreshInput.addEventListener('change', () => {
+  if (!refreshInput.files[0]) return;
+  const file = refreshInput.files[0];
+  refreshStatus.textContent = `Lecture de ${file.name}…`;
+  parseFileToData(file).then((data) => {
+    DATA = data;
+    refreshStatus.textContent = `Chargé : ${file.name}`;
+    setTimeout(() => { refreshStatus.textContent = ''; }, 4000);
+    location.hash = '#/';
+    render();
+  }).catch((err) => {
+    refreshStatus.textContent = `Erreur : ${err.message}`;
+  });
+  refreshInput.value = '';
+});
+
 window.addEventListener('hashchange', render);
-window.addEventListener('DOMContentLoaded', render);
+window.addEventListener('DOMContentLoaded', init);
+
+function parseFileToData(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+        resolve(parseCompetentWorkbook(wb, file.name));
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error('Impossible de lire le fichier.'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function init() {
+  app.innerHTML = '<p class="stats-line" style="text-align:center;margin-top:60px;">Chargement des données…</p>';
+  try {
+    const res = await fetch('data/export.xlsx', { cache: 'no-store' });
+    if (!res.ok) throw new Error('fichier par défaut introuvable');
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    DATA = parseCompetentWorkbook(wb, 'export.xlsx (fichier par défaut)');
+  } catch (err) {
+    DATA = null;
+  }
+  render();
+}
 
 // ---------- helpers ----------
 
@@ -87,6 +138,7 @@ function block(title, count, innerHtml) {
 
 function render() {
   app.innerHTML = '';
+  refreshBtn.hidden = !DATA;
   if (!DATA) {
     app.appendChild(renderUpload());
     return;
@@ -119,7 +171,7 @@ function renderUpload() {
     <div>
       <div class="entry-card" style="max-width:640px;margin:40px auto;">
         <h2>Charger un export Competent (.xlsx)</h2>
-        <p class="hint">Rien n'est envoyé nulle part : le fichier est lu et interprété directement dans votre navigateur. Glissez-déposez le fichier ci-dessous, ou choisissez-le.</p>
+        <p class="hint">Le fichier par défaut n'a pas pu être chargé automatiquement. Rien n'est envoyé nulle part : le fichier est lu et interprété directement dans votre navigateur. Glissez-déposez le fichier ci-dessous, ou choisissez-le.</p>
         <div id="dropzone" style="border:2px dashed var(--border);border-radius:10px;padding:36px 16px;text-align:center;cursor:pointer;">
           <div style="font-size:14px;color:var(--muted);">Glissez le fichier .xlsx ici, ou cliquez pour parcourir</div>
           <input id="file-input" type="file" accept=".xlsx" style="display:none;">
@@ -149,20 +201,14 @@ function renderUpload() {
 
 function loadFile(file, statusEl) {
   statusEl.textContent = `Lecture de ${file.name}…`;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
-      DATA = parseCompetentWorkbook(wb, file.name);
-      location.hash = '#/';
-      render();
-    } catch (err) {
-      console.error(err);
-      statusEl.textContent = `Erreur lors de la lecture du fichier : ${err.message}`;
-    }
-  };
-  reader.onerror = () => { statusEl.textContent = "Impossible de lire le fichier."; };
-  reader.readAsArrayBuffer(file);
+  parseFileToData(file).then((data) => {
+    DATA = data;
+    location.hash = '#/';
+    render();
+  }).catch((err) => {
+    console.error(err);
+    statusEl.textContent = `Erreur lors de la lecture du fichier : ${err.message}`;
+  });
 }
 
 // ---------- home ----------
@@ -189,15 +235,8 @@ function renderHome() {
         </div>
       </div>
       <p class="stats-line">${DATA.meta.occupationCount} métiers · ${DATA.meta.skillCount} compétences · ${DATA.meta.softSkillCount} soft skills · ${DATA.meta.digitalSkillCount} digital skills · ${DATA.meta.competenceSetCount} ensembles de compétences — source : ${esc(DATA.meta.generatedFrom)}</p>
-      <p class="stats-line"><a class="reset-home" id="reload-link">Charger un autre fichier</a></p>
     </div>
   `);
-
-  wrap.querySelector('#reload-link').addEventListener('click', () => {
-    DATA = null;
-    location.hash = '';
-    render();
-  });
 
   const searchMetier = wrap.querySelector('#search-metier');
   const resultsMetier = wrap.querySelector('#results-metier');

@@ -12,14 +12,21 @@ Deux points d'entrée pour explorer les liens entre données :
 - **Par compétence** : une compétence, un soft skill ou un digital skill, avec la liste
   complète des métiers concernés.
 
-Rien n'est codé en dur : le viewer est une page statique qui lit et interprète le
-fichier `.xlsx` **dans le navigateur**, au moment où vous le chargez. Aucune donnée
-n'est envoyée où que ce soit.
+Le viewer lit et interprète le fichier `.xlsx` **dans le navigateur** ; aucune donnée
+n'est envoyée où que ce soit. Le classeur `web/data/export.xlsx` est chargé
+automatiquement au démarrage. Pour explorer un autre export, cliquez sur l'icône
+rafraîchir (↻) en haut de la page et choisissez un autre fichier `.xlsx` — le
+remplacement ne vaut que pour la session en cours et ne modifie pas le fichier par
+défaut. Pour changer le fichier par défaut lui-même, remplacez `web/data/export.xlsx`.
 
 ## Utilisation
 
-Ouvrez `web/index.html` dans un navigateur (double-clic suffit, pas besoin de serveur),
-puis glissez-déposez votre export Competent (`.xlsx`) ou choisissez-le via le bouton.
+- **En local** : ouvrez `web/index.html` dans un navigateur (double-clic suffit). Le
+  chargement automatique du fichier par défaut nécessite d'être servi en http (voir
+  ci-dessous) — en `file://`, l'écran de dépôt de fichier s'affiche directement.
+- **Servi (recommandé)** : `npm start` (voir `server.js`) lance un petit serveur Node
+  qui sert `web/` sur `http://localhost:3000` (port configurable via `PORT`), avec le
+  chargement automatique de `web/data/export.xlsx`.
 
 Le fichier attendu est l'export standard Competent, avec les onglets `Occupational
 Profiles`, `Occ.Prof - Alt.Names`, `Occ.Prof - ProofsOfLearning`, `Occ.Prof - Codes`,
@@ -31,17 +38,21 @@ préfixe de nom, donc les futures versions du fichier passent sans modification 
 
 ## Structure
 
+- `web/data/export.xlsx` — export Competent chargé par défaut au démarrage.
 - `web/index.html`, `web/style.css` — page et mise en forme.
 - `web/parser.js` — transforme les lignes du classeur Excel en un modèle de données
   reliant métiers, compétences (essentielles/optionnelles), soft skills, digital
   skills et ensembles de compétences.
-- `web/app.js` — recherche, navigation et rendu des pages.
+- `web/app.js` — recherche, navigation et rendu des pages ; charge `web/data/export.xlsx`
+  au démarrage et gère le rechargement via l'icône rafraîchir.
 - `web/vendor/xlsx.full.min.js` — [SheetJS](https://sheetjs.com/) (licence Apache 2.0,
   voir `web/vendor/LICENSE.xlsx.txt`), utilisé pour lire le fichier Excel côté client.
+- `server.js`, `package.json` — serveur statique Node minimal (pour l'hébergement, ex.
+  Railway/Railpack).
 
 ## Notes
 
 - La langue d'affichage (FR/NL) se change en haut à droite ; les champs manquants dans
   la langue choisie retombent automatiquement sur l'autre langue disponible.
-- Recharger la page oblige à recharger le fichier (rien n'est persisté), puisque le but
-  est justement de ne pas figer une version des données dans l'application.
+- Recharger la page revient au fichier par défaut (rien n'est persisté côté navigateur) ;
+  un fichier chargé via l'icône rafraîchir ne vaut que pour la session en cours.

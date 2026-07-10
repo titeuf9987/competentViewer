@@ -107,6 +107,36 @@ header.top h1 {
 }
 header.top h1 span { color: var(--accent); }
 
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.icon-btn:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.icon-btn:active svg {
+  transform: rotate(180deg);
+}
+.icon-btn svg {
+  transition: transform 0.4s ease;
+}
+
+.refresh-status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .langtoggle {
   margin-left: auto;
   display: flex;
