@@ -1,0 +1,12 @@
+{
+  "name": "competent-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static viewer for Competent (VDAB) occupational-profiles exports.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
